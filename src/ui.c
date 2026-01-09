@@ -1,52 +1,49 @@
 #include <ncurses.h>
 #include <string.h>
+#include <unistd.h>
+#include <pwd.h>
 #include "procmon.h"
 
 extern int selected;
 extern int depth[];
 extern char local_user[];
-extern char search_filter[];
-extern int search_mode;
 
 #define C_HEADER   1
-#define C_RUNNING  2
+#define C_RUN      2
 #define C_SLEEP    3
 #define C_ZOMBIE   4
-#define C_HIGHCPU  5
+#define C_HOT      5
 #define C_SELECT   6
 
-static int state_color(const char *state, double cpu){
-    if(cpu > 20.0) return C_HIGHCPU;
-    if(state[0] == 'R') return C_RUNNING;
-    if(state[0] == 'S') return C_SLEEP;
-    if(state[0] == 'Z' || state[0] == 'T') return C_ZOMBIE;
+static int state_color(const char *s,double cpu){
+    if(cpu>20) return C_HOT;
+    if(s[0]=='R') return C_RUN;
+    if(s[0]=='S') return C_SLEEP;
+    if(s[0]=='Z') return C_ZOMBIE;
     return C_SLEEP;
 }
 
-void draw_ui(Process *list, int count){
+void draw_ui(Process *list,int count){
     erase();
 
-    attron(COLOR_PAIR(C_HEADER) | A_BOLD);
-    mvprintw(0,2,"PROC MON | user: %s | ↑↓ move | PgUp PgDn | t tree | / search | k kill | q quit", local_user);
-    mvprintw(1,0," PID     USER     CPU%%    MEM(KB)   STATE        COMMAND");
-    attroff(COLOR_PAIR(C_HEADER) | A_BOLD);
+    attron(COLOR_PAIR(C_HEADER)|A_BOLD);
+    mvprintw(0,2,
+    "PROC MON | ↑↓ move | SPACE collapse | ENTER details | F2 theme | t tree | k/K kill p stop r run | q quit");
+    attroff(COLOR_PAIR(C_HEADER)|A_BOLD);
 
+    mvprintw(1,0," PID     USER     CPU%%    MEM(KB)   STATE        COMMAND");
     mvhline(2,0,'-',COLS);
 
-    int max = LINES - 4;
+    int max=LINES-4;
 
     for(int i=0;i<count && i<max;i++){
-        int col = state_color(list[i].state, list[i].cpu_percent);
+        int col=state_color(list[i].state,list[i].cpu_percent);
 
-        if(i == selected){
-            attron(COLOR_PAIR(C_SELECT) | A_BOLD);
-        } else {
-            attron(COLOR_PAIR(col));
-        }
+        if(i==selected) attron(COLOR_PAIR(C_SELECT)|A_BOLD);
+        else attron(COLOR_PAIR(col));
 
-        char indent[64] = "";
-        for(int d=0; d<depth[i] && d<20; d++)
-            strcat(indent, "  ");
+        char indent[64]="";
+        for(int d=0;d<depth[i];d++) strcat(indent,"  ");
 
         mvprintw(3+i,0," %-6d %-8s %5.1f   %-8ld %-12s %s%s",
             list[i].pid,
@@ -57,22 +54,9 @@ void draw_ui(Process *list, int count){
             indent,
             list[i].cmdline);
 
-        if(i == selected){
-            attroff(COLOR_PAIR(C_SELECT) | A_BOLD);
-        } else {
-            attroff(COLOR_PAIR(col));
-        }
+        if(i==selected) attroff(COLOR_PAIR(C_SELECT)|A_BOLD);
+        else attroff(COLOR_PAIR(col));
     }
-
-    attron(COLOR_PAIR(C_HEADER));
-    if(search_mode){
-        mvprintw(LINES-1,2,"Search: %s", search_filter);
-    } else if(search_filter[0]){
-        mvprintw(LINES-1,2,"Filter: %s   (ESC clear)", search_filter);
-    } else {
-        mvprintw(LINES-1,2,"Processes: %d", count);
-    }
-    attroff(COLOR_PAIR(C_HEADER));
 
     refresh();
 }
