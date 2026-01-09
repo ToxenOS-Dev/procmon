@@ -1,18 +1,18 @@
-CC=clang
-CFLAGS=-Wall -Wextra -Iinclude
-LDFLAGS=-lncurses
+CC = clang
+CFLAGS = -Wall -Wextra -Iinclude
+SRC = src/main.c src/proc.c src/cpu.c src/ui.c
+OUT = procmon
 
-SRC=src/main.c src/proc.c src/cpu.c src/ui.c
-OUT=procmon
+PREFIX ?= /usr/local
 
-PREFIX ?= $$(pwd)/dist
+all: build
 
-install:
+build:
+	$(CC) $(CFLAGS) $(SRC) -o $(OUT) -lncurses
+
+install: build
 	mkdir -p $(PREFIX)/bin
-	cp procmon $(PREFIX)/bin/procmon
-
-all:
-	$(CC) $(CFLAGS) $(SRC) -o $(OUT) $(LDFLAGS)
+	cp $(OUT) $(PREFIX)/bin/procmon
 
 clean:
 	rm -f procmon
