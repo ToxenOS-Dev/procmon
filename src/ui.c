@@ -4,9 +4,9 @@
 
 extern int selected;
 extern int depth[];
+extern char local_user[];
 extern char search_filter[];
 extern int search_mode;
-extern char local_user[];
 
 #define C_HEADER   1
 #define C_RUNNING  2
@@ -15,20 +15,20 @@ extern char local_user[];
 #define C_HIGHCPU  5
 #define C_SELECT   6
 
-static int state_color(const char *state, double cpu) {
-    if (cpu > 20.0) return C_HIGHCPU;
-    if (state[0] == 'R') return C_RUNNING;
-    if (state[0] == 'S') return C_SLEEP;
-    if (state[0] == 'Z' || state[0] == 'T') return C_ZOMBIE;
+static int state_color(const char *state, double cpu){
+    if(cpu > 20.0) return C_HIGHCPU;
+    if(state[0] == 'R') return C_RUNNING;
+    if(state[0] == 'S') return C_SLEEP;
+    if(state[0] == 'Z' || state[0] == 'T') return C_ZOMBIE;
     return C_SLEEP;
 }
 
-void draw_ui(Process *list,int count){
+void draw_ui(Process *list, int count){
     erase();
 
     attron(COLOR_PAIR(C_HEADER) | A_BOLD);
-    mvprintw(0,2,"PROC MON | user: %s | tree:t | search:/ | kill:k | quit:q", local_user);
-    mvprintw(1,0," PID   USER     CPU%%    MEM(KB)   STATE        COMMAND");
+    mvprintw(0,2,"PROC MON | user: %s | ↑↓ move | PgUp PgDn | t tree | / search | k kill | q quit", local_user);
+    mvprintw(1,0," PID     USER     CPU%%    MEM(KB)   STATE        COMMAND");
     attroff(COLOR_PAIR(C_HEADER) | A_BOLD);
 
     mvhline(2,0,'-',COLS);
@@ -38,7 +38,7 @@ void draw_ui(Process *list,int count){
     for(int i=0;i<count && i<max;i++){
         int col = state_color(list[i].state, list[i].cpu_percent);
 
-        if(i==selected){
+        if(i == selected){
             attron(COLOR_PAIR(C_SELECT) | A_BOLD);
         } else {
             attron(COLOR_PAIR(col));
@@ -57,7 +57,7 @@ void draw_ui(Process *list,int count){
             indent,
             list[i].cmdline);
 
-        if(i==selected){
+        if(i == selected){
             attroff(COLOR_PAIR(C_SELECT) | A_BOLD);
         } else {
             attroff(COLOR_PAIR(col));
@@ -70,7 +70,7 @@ void draw_ui(Process *list,int count){
     } else if(search_filter[0]){
         mvprintw(LINES-1,2,"Filter: %s   (ESC clear)", search_filter);
     } else {
-        mvprintw(LINES-1,2,"Processes: %d",count);
+        mvprintw(LINES-1,2,"Processes: %d", count);
     }
     attroff(COLOR_PAIR(C_HEADER));
 

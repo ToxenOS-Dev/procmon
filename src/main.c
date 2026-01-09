@@ -6,8 +6,6 @@
 #include <unistd.h>
 #include "procmon.h"
 
-/* ---------- CONFIG ---------- */
-
 #define CONFIG_FILE "/data/data/com.termux/files/home/.procmonrc"
 
 /* ---------- GLOBAL STATE ---------- */
@@ -15,6 +13,7 @@
 int selected = 0;
 int tree_mode = 0;
 int search_mode = 0;
+int scroll_offset = 0;
 
 char search_filter[64] = "";
 char local_user[32] = "";
@@ -66,7 +65,7 @@ int build_tree(Process *src, int count, Process *out){
     return outc;
 }
 
-/* ---------- CONFIG SYSTEM ---------- */
+/* ---------- CONFIG ---------- */
 
 void load_user(){
     FILE *f = fopen(CONFIG_FILE, "r");
@@ -96,7 +95,6 @@ int main(){
     Process tree[MAX_PROC];
     Process view[MAX_PROC];
 
-    /* load or ask for user name */
     load_user();
 
     if(strlen(local_user) == 0){
@@ -113,13 +111,12 @@ int main(){
         save_user();
     }
 
-    /* ncurses init */
     initscr();
     noecho();
     cbreak();
     keypad(stdscr, TRUE);
     curs_set(0);
-    timeout(800);
+    timeout(200);
 
     start_color();
     use_default_colors();
@@ -143,8 +140,6 @@ int main(){
             show_list = tree;
         }
 
-        /* ---------- FILTER ---------- */
-
         int vcount = 0;
         for(int i=0;i<show_count;i++){
             if(process_match(&show_list[i], search_filter)){
@@ -152,12 +147,21 @@ int main(){
             }
         }
 
+        int view_height = LINES - 4;
+
         if(selected >= vcount) selected = vcount - 1;
         if(selected < 0) selected = 0;
 
-        draw_ui(view, vcount);
+        if(selected < scroll_offset) scroll_offset = selected;
+        if(selected >= scroll_offset + view_height)
+            scroll_offset = selected - view_height + 1;
 
-        /* ---------- INPUT ---------- */
+        if(scroll_offset < 0) scroll_offset = 0;
+        if(scroll_offset > vcount - view_height)
+            scroll_offset = vcount - view_height;
+        if(scroll_offset < 0) scroll_offset = 0;
+
+        draw_ui(view + scroll_offset, vcount - scroll_offset);
 
         int ch = getch();
 
@@ -178,20 +182,13 @@ int main(){
         else{
             if(ch == 'q') break;
             else if(ch == KEY_DOWN) selected++;
-            else if(ch == KEY_UP) selected--;
-            else if(ch == 'k' && vcount > 0){
-                kill(view[selected].pid, SIGTERM);
-            }
-            else if(ch == 't'){
-                tree_mode = !tree_mode;
-                selected = 0;
-            }
-            else if(ch == '/'){
-                search_mode = 1;
-            }
-            else if(ch == 27){
-                search_filter[0] = 0;
-            }
+            else if(ch == KEY_UP)   selected--;
+            else if(ch == KEY_NPAGE) selected += view_height;
+            else if(ch == KEY_PPAGE) selected -= view_height;
+            else if(ch == 'k' && vcount > 0) kill(view[selected].pid, SIGTERM);
+            else if(ch == 't'){ tree_mode = !tree_mode; selected = 0; scroll_offset = 0; }
+            else if(ch == '/') search_mode = 1;
+            else if(ch == 27) search_filter[0] = 0;
         }
     }
 
