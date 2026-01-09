@@ -6,6 +6,7 @@ extern int selected;
 extern int depth[];
 extern char search_filter[];
 extern int search_mode;
+extern char local_user[];
 
 #define C_HEADER   1
 #define C_RUNNING  2
@@ -26,8 +27,8 @@ void draw_ui(Process *list,int count){
     erase();
 
     attron(COLOR_PAIR(C_HEADER) | A_BOLD);
-    mvprintw(0,2,"PROC MON | tree:t | search:/ | kill:k | quit:q");
-    mvprintw(1,0," PID     CPU%%    MEM(KB)   STATE        NAME");
+    mvprintw(0,2,"PROC MON | user: %s | tree:t | search:/ | kill:k | quit:q", local_user);
+    mvprintw(1,0," PID   USER     CPU%%    MEM(KB)   STATE        COMMAND");
     attroff(COLOR_PAIR(C_HEADER) | A_BOLD);
 
     mvhline(2,0,'-',COLS);
@@ -47,13 +48,14 @@ void draw_ui(Process *list,int count){
         for(int d=0; d<depth[i] && d<20; d++)
             strcat(indent, "  ");
 
-        mvprintw(3+i,0," %-6d  %5.1f   %-8ld %-12s %s%s",
-                  list[i].pid,
-                  list[i].cpu_percent,
-                  list[i].mem_kb,
-                  list[i].state,
-                  indent,
-                  list[i].name);
+        mvprintw(3+i,0," %-6d %-8s %5.1f   %-8ld %-12s %s%s",
+            list[i].pid,
+            list[i].user,
+            list[i].cpu_percent,
+            list[i].mem_kb,
+            list[i].state,
+            indent,
+            list[i].cmdline);
 
         if(i==selected){
             attroff(COLOR_PAIR(C_SELECT) | A_BOLD);
